@@ -1,6 +1,6 @@
 /**
  * @file synt.c
- * @author Prof. Ivairton M. Santos - UFMT - Computacao
+ * @author Anna Bheatryz Martins dos Santos e Mariana Sanchez Pedroni
  * @brief Codificacao do modulo do analisador sintatico
  * @version 0.4
  * @date 2022-02-04
@@ -9,6 +9,7 @@
 
 // Inclusao do cabecalho
 #include "synt.h"
+#include <stdbool.h>
 
 // Variaveis globais
 type_token *lookahead;
@@ -38,9 +39,12 @@ int match(int token_tag) {
 void program (void) {
     gen_preambule(); //Temporariamente cria um preambulo adicional que permite o uso das funcoes scanf e printf
     declarations();
+    match(BEGIN);
     gen_preambule_code(); //Chamada do gerador de codigo para escrita do cabecalho da secao de codigo
     statements();
+    match(END);
     gen_epilog_code();
+    func_code();
     gen_data_section(); //Chamada do gerador de codigo para declaracao de variaveis
 }
 
@@ -55,36 +59,70 @@ void declarations(void) {
  * @brief Regra de derivacao declaracao
  * @return int true/false
  */
-int declaration (void) {
-    type_symbol_table_entry *search_symbol;
-    int ok1, ok2;
-    char var_name[MAX_CHAR];
-    int var_type;
-
-    //Verifica o tipo da variavel
-    var_type = lookahead->tag;
-    if ( var_type == INT || var_type == FLOAT || var_type == CHAR || var_type == STRING) { 
-        match(var_type);
-        strcpy(var_name, lookahead->lexema);
-        search_symbol = sym_find( var_name, &global_symbol_table_variables );
-
-        if ( search_symbol != NULL) {
-            printf ("[ERRO] Variavel '%s' ja declarada.\n", var_name); 
-            return false;
+int declaration(void) {
+    int type = lookahead->tag;
+    if (type == INT || type == FLOAT || type == CHAR || type == STRING) {
+        int return_type = type;
+        match(type);
+        char name[MAX_CHAR];
+        strcpy(name, lookahead->lexema);
+        match(ID);
+        if (lookahead->tag == SEMICOLON) {
+            // Declaração de variável
+            if (sym_find(name, &global_symbol_table_variables) != NULL) {
+                printf("[ERRO] Variavel '%s' ja declarada.\n", name);
+                return false;
+            }
+            sym_declare(name, type, 0, &global_symbol_table_variables);
+            return match(SEMICOLON);
+        } else if (lookahead->tag == OPEN_PAR) {
+            // Declaração de função (protótipo)
+            if (sym_func_find(name) != NULL) {
+                printf("[ERRO] Funcao '%s' ja declarada.\n", name);
+                return false;
+            }
+            match(OPEN_PAR);
+            type_symbol_table_entry params[MAX_PARAMS];
+            int nparams = 0;
+            bool has_param = (lookahead->tag != CLOSE_PAR);
+            while (has_param) {
+                int param_type = lookahead->tag;
+                if (param_type != INT && param_type != FLOAT && param_type != CHAR && param_type != STRING) {
+                    printf("[ERRO] Tipo de parametro invalido.\n");
+                    return false;
+                }
+                match(param_type);
+                char param_name[MAX_CHAR];
+                strcpy(param_name, lookahead->lexema);
+                match(ID);
+                // Declara parametro como variável global
+                if (sym_find(param_name, &global_symbol_table_variables) != NULL) {
+                    printf("[ERRO] Parametro '%s' ja declarado.\n", param_name);
+                    return false;
+                }
+                sym_declare(param_name, param_type, 0, &global_symbol_table_variables);
+                // Adiciona ao array de params
+                params[nparams].type = param_type;
+                strcpy(params[nparams].name, param_name);
+                params[nparams].addr = 0;
+                nparams++;
+                if (lookahead->tag == COMMA) {
+                    match(COMMA);
+                } else {
+                    has_param = false;
+                }
+            }
+            match(CLOSE_PAR);
+            match(SEMICOLON);
+            // Declara a função na TSF
+            sym_func_declare(name, return_type, params, nparams);
+            return true;
         } else {
-            sym_declare( var_name, var_type, 0, &global_symbol_table_variables);
-            ok1 = match(ID); //Verifica se identificador vem a seguir
-            ok2 = match(SEMICOLON); //Verifica se ; vem a seguir
-            return ok1 && ok2;
+            printf("[ERRO] Esperado ';' ou '(' apos ID.\n");
+            return false;
         }
-    } else if (lookahead->tag == ENDTOKEN ||
-                lookahead->tag == READ ||
-                lookahead->tag == WRITE) {
-        //Verifica se fim de arquivo
-        return false;         
     } else {
-        printf ("[ERRO] Tipo desconhecido: %d %s.\n", lookahead->tag, lookahead->lexema);
-        return false; 
+        return false;
     }
 }
 
@@ -195,23 +233,52 @@ int statement (void) {
         return true;
 
     } else if (lookahead->tag == ID) {
-        // id = E;
-        char var_name[MAX_CHAR];
-        strcpy(var_name, lookahead->lexema);
+        char lexeme_of_id[MAX_CHAR];
+        strcpy(lexeme_of_id, lookahead->lexema);
+        type_symbol_table_entry *search_symbol = sym_find(lexeme_of_id, &global_symbol_table_variables);
+        type_symbol_function *func = sym_func_find(lexeme_of_id);
         match(ID);
-
-        search_symbol = sym_find(var_name, &global_symbol_table_variables);
-        if (search_symbol == NULL) {
-            printf("[ERRO] Variavel nao declarada para atribuicao: %s\n", var_name);
-            return false;
-        }
-        
-        if (match(ASSIGN)){
-            E();
-            gen_assign(var_name);
-            match(SEMICOLON);
-            return true;
-        } else{
+        if (lookahead->tag == ASSIGN) {
+            if (search_symbol == NULL) {
+                printf("[ERRO] Variavel nao declarada: %s\n", lexeme_of_id);
+                return false;
+            }
+            match(ASSIGN);
+            if (!E()) return false;
+            gen_assign(lexeme_of_id);
+            return match(SEMICOLON);
+        } else if (lookahead->tag == OPEN_PAR) {
+            if (func == NULL) {
+                printf("[ERRO] Funcao nao declarada: %s\n", lexeme_of_id);
+                return false;
+            }
+            match(OPEN_PAR);
+            int nargs = 0;
+            bool has_arg = (lookahead->tag != CLOSE_PAR);
+            while (has_arg) {
+                if (!E()) return false;
+                nargs++;
+                if (lookahead->tag == COMMA) {
+                    match(COMMA);
+                } else {
+                    has_arg = false;
+                }
+            }
+            match(CLOSE_PAR);
+            if (nargs != func->nparams) {
+                printf("[ERRO] Numero de argumentos nao corresponde para funcao %s (esperado %d, recebido %d)\n", lexeme_of_id, func->nparams, nargs);
+                return false;
+            }
+            // Gera código para atribuir argumentos aos parametros (em ordem reversa, pois pilha)
+            for (int i = func->nparams - 1; i >= 0; i--) {
+                fprintf(output_file, "pop rax\n");
+                fprintf(output_file, "mov [%s], eax\n", func->params[i].name);
+            }
+            // Chamada da função
+            gen_call(func->label);
+            return match(SEMICOLON);
+        } else {
+            printf("[ERRO] Esperado '=' ou '(' apos ID: %s\n", lexeme_of_id);
             return false;
         }
     } else if (lookahead->tag == ENDTOKEN) {
@@ -222,6 +289,68 @@ int statement (void) {
         printf("[ERRO] Comando desconhecido.\nTag=%d; Lexema=%s\n",lookahead->tag, lookahead->lexema);
         return false;
     }
+}
+
+void func_code(void){
+    while (func_implementation());
+}
+
+int func_implementation(void){
+    int type = lookahead->tag;
+    if (type != INT && type != FLOAT && type != CHAR && type != STRING) {
+        return false;
+    }
+    int return_type = type;
+    match(type);
+    char name[MAX_CHAR];
+    strcpy(name, lookahead->lexema);
+    match(ID);
+    type_symbol_function *func = sym_func_find(name);
+    if (func == NULL) {
+        printf("[ERRO] Funcao nao prototipada: %s\n", name);
+        return false;
+    }
+    if (func->return_type != return_type) {
+        printf("[ERRO] Tipo de retorno nao corresponde para funcao %s\n", name);
+        return false;
+    }
+    match(OPEN_PAR);
+    type_symbol_table_entry temp_params[MAX_PARAMS];
+    int temp_nparams = 0;
+    bool has_param = (lookahead->tag != CLOSE_PAR);
+    while (has_param) {
+        int param_type = lookahead->tag;
+        match(param_type);
+        char param_name[MAX_CHAR];
+        strcpy(param_name, lookahead->lexema);
+        match(ID);
+        temp_params[temp_nparams].type = param_type;
+        strcpy(temp_params[temp_nparams].name, param_name);
+        temp_nparams++;
+        if (lookahead->tag == COMMA) {
+            match(COMMA);
+        } else {
+            has_param = false;
+        }
+    }
+    match(CLOSE_PAR);
+    // Verifica se parametros correspondem ao prototipo (numero, tipo e nome)
+    if (temp_nparams != func->nparams) {
+        printf("[ERRO] Numero de parametros nao corresponde na implementacao de %s\n", name);
+        return false;
+    }
+    for (int i = 0; i < temp_nparams; i++) {
+        if (temp_params[i].type != func->params[i].type || strcmp(temp_params[i].name, func->params[i].name) != 0) {
+            printf("[ERRO] Parametro %d nao corresponde (tipo ou nome) na implementacao de %s\n", i, name);
+            return false;
+        }
+    }
+    match(BEGIN);
+    gen_label(func->label); // Label da funcao
+    statements();
+    match(END);
+    gen_epilog_code(); // ret
+    return true;  
 }
 
 /**
@@ -395,6 +524,7 @@ int main(int argc, char *argv[]) {
     //Inicializa a tabela de simbolo global
     initSymbolTableVariables(&global_symbol_table_variables);
     initSymbolTableString();
+    initSymbolTableFunctions();
 
     //Verifica a passagem de parametro
     if (argc != 2) {

@@ -1,6 +1,6 @@
 /**
  * @file gen.c
- * @author Ivairton M. Santos - UFMT - Computacao
+ * @author Anna Bheatryz Martins dos Santos e Mariana Sanchez Pedroni
  * @brief Codificacao do modulo gerador de codigo
  * @version 0.2
  * @date 2022-02-23
@@ -373,4 +373,9 @@ void gen_write(char *lexeme_of_id, int type) {
             fprintf(output_file, "int 0x80\n");
             break;
     }
+}
+
+void gen_call(char *label){
+    fprintf(output_file, ";Chamada de funcao\n");
+    fprintf(output_file, "call %s\n", label);
 }

@@ -1,22 +1,22 @@
 /**
  * @file symbols.c
- * @author Prof. Ivairton M. Santos - UFMT - Computacao
+ * @author Anna Bheatryz Martins dos Santos e Mariana Sanchez Pedroni
  * @brief Modulo do gerador da tabela de simbolos
  * @version 0.1
  * @date 2022-02-04
  */
 #include "symbols.h"
 
-//extern int nstringconsts;
-//int sympos = 0;
-//int nstringconsts = 0;
-//int symfuncspos = 0; //Sera usado posteriormente
-//int stack_pos = 0;
+extern int nstringconsts;
+int sympos = 0;
+int nstringconsts = 0;
+int symfuncspos = 0; //Sera usado posteriormente
+int stack_pos = 0;
 
 //Variaveis globais
 type_symbol_table_variables global_symbol_table_variables;
 type_symbol_table_string symbol_table_string;
-//type_symbol_function symfuncs[MAX_FUNCS];
+type_symbol_function symfuncs[MAX_FUNCS];
  
 
 /**
@@ -110,18 +110,16 @@ type_symbol_table_string_entry *sym_string_declare(char *s) {
  * @param s 
  * @return type_symbol_function* 
  */
-/*
-type_symbol_function *sym_func_find(char *s){
+type_symbol_function *sym_func_find(char *s) {
     int i;
-	type_symbol_function *symbol = NULL;
-	for (i = 0; i < symfuncspos; i++) {
-		if (strcmp(symfuncs[i].name, s) == 0) {
-			symbol = &symfuncs[i];
-		}
-	}
-	return symbol;
+    for (i = 0; i < symfuncspos; i++) {
+        if (strcmp(symfuncs[i].name, s) == 0) {
+            return &symfuncs[i];
+        }
+    }
+    return NULL;
 }
-*/
+
 
 /**
  * @brief Insere um novo simbolo na tabela (funcoes)
@@ -132,22 +130,27 @@ type_symbol_function *sym_func_find(char *s){
  * @param nparams 
  * @return type_symbol_function* 
  */
-/*
-type_symbol_function *sym_func_declare(char *name, char type, type_symbol params[MAX_PARAMS],int nparams){
-    int i;
-    strncpy (symfuncs[symfuncspos].name, name, MAX_TOKSZ);
-    symfuncs[symfuncspos].type = type;
+type_symbol_function *sym_func_declare(char *name, int return_type, type_symbol_table_entry *params, int nparams) {
+    if (symfuncspos >= MAX_FUNCS) {
+        printf("[ERRO] Limite de funcoes atingido.\n");
+        return NULL;
+    }
+    strcpy(symfuncs[symfuncspos].name, name);
+    symfuncs[symfuncspos].return_type = return_type;
     symfuncs[symfuncspos].nparams = nparams;
-    for (i = 0; i < nparams; i++) {    
-        strncpy(symfuncs[symfuncspos].params[i].name,params[i].name,MAX_TOKSZ);
-        symfuncs[symfuncspos].params[i].type = params[i].type;
+    for (int i = 0; i < nparams; i++) {
+        symfuncs[symfuncspos].params[i] = params[i];
     }
-    symfuncspos ++;
-    if (symfuncspos > MAX_FUNCS) {
-		printf("[ERRO] Limite de declaracao de funcoes atingido.");
-    }
-    return &symfuncs[symfuncspos -1];
+    // Gera label
+    sprintf(symfuncs[symfuncspos].label, "func_%s", name);
+    symfuncspos++;
+    return &symfuncs[symfuncspos - 1];
 }
+
+void initSymbolTableFunctions() {
+    symfuncspos = 0;
+}
+
 
 /**
  * @brief Inicializa tabela de simbolos de variaveis globais
@@ -198,5 +201,20 @@ void printSTString() {
     for (i = 0; i < n_str; i++) {
         printf("\tstring[%d].name:%s\n", i, symbol_table_string.string[i].name);
         printf("\tstring[%d].value:%s\n", i, symbol_table_string.string[i].value);
+    }
+}
+
+void printSTFunctions() {
+    int i, j;
+    printf("TABELA DE SIMBOLOS DE FUNCOES:\n");
+    printf("Numero de funcoes = %d\n", symfuncspos);
+    for (i = 0; i < symfuncspos; i++) {
+        printf("\tfuncao[%d].name: %s\n", i, symfuncs[i].name);
+        printf("\tfuncao[%d].return_type: %d\n", i, symfuncs[i].return_type);
+        printf("\tfuncao[%d].label: %s\n", i, symfuncs[i].label);
+        printf("\tfuncao[%d].nparams: %d\n", i, symfuncs[i].nparams);
+        for (j = 0; j < symfuncs[i].nparams; j++) {
+            printf("\t\tparam[%d]: name %s, type %d\n", j, symfuncs[i].params[j].name, symfuncs[i].params[j].type);
+        }
     }
 }

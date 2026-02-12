@@ -1,6 +1,6 @@
 /**
  * @file gen_win.c
- * @author Ivairton M. Santos - UFMT - Computacao
+ * @author Anna Bheatryz Martins dos Santos e Mariana Sanchez Pedroni
  * @brief Codificacao do modulo gerador de codigo
  * @version 0.2
  * @date 2022-02-23
@@ -155,4 +155,8 @@ void gen_write(char *lexeme_of_id) {
     fprintf(output_file, "mov edx, dword [REL %s]\n", lexeme_of_id);
     fprintf(output_file, "mov rcx, fmtstr0\n");
     fprintf(output_file, "call printf\n");
+}
+
+void gen_call(char *label){
+    printf("call %s\n", label);
 }

@@ -1,6 +1,6 @@
 /**
  * @file symbols.h
- * @author Prof. Ivairton M. Santos - UFMT - Computacao
+ * @author Anna Bheatryz Martins dos Santos e Mariana Sanchez Pedroni
  * @brief Modulo do gerador da tabela de simbolos
  * @version 0.1
  * @date 2022-02-04
@@ -52,32 +52,32 @@ struct st_symbol_table_strings {
 };
 typedef struct st_symbol_table_strings type_symbol_table_string;
 
-/* Preparo para tratamento de funcoes
 // Estrutura da tabela de simbolos para funcoes
 struct st_sym_func {
-    char type;
     char name[MAX_TOKSZ];
-    type_symbol params[MAX_PARAMS];
+    int return_type;
+    type_symbol_table_entry params[MAX_PARAMS];
     int nparams;
+    char label[MAX_TOKSZ];
 };
-typedef struct st_sym_func type_symbol_function_entry;
-*/
+typedef struct st_sym_func type_symbol_function;
 
+// Variaveis globais para TSF
+extern type_symbol_function symfuncs[MAX_FUNCS];
+extern int symfuncspos;
 
 // Prototipos
 type_symbol_table_entry *sym_find(char *s, type_symbol_table_variables *stv);
 type_symbol_table_entry *sym_declare(char *name, int type, int addr, type_symbol_table_variables *stv);
 type_symbol_table_string_entry *sym_string_find(char *s);
 type_symbol_table_string_entry *sym_string_declare(char *s);
+type_symbol_function *sym_func_find(char *s);
+type_symbol_function *sym_func_declare(char *name, int return_type, type_symbol_table_entry *params, int nparams);
 void initSymbolTableVariables(type_symbol_table_variables *stv);
 void initSymbolTableString();
-
-//Funcoes destinadas a DEBUG
+void initSymbolTableFunctions();
 void printSTVariables(type_symbol_table_variables *stv);
 void printSTString();
+void printSTFunctions();
 
-/* Preparo para tratamento de funcoes
-type_symbol_function *sym_func_find(char *s);
-type_symbol_function *sym_func_declare(char *name,char type, type_symbol_table_entry params[MAX_PARAMS], int nparams);
-*/
 #endif //_SYMBOLS_H_

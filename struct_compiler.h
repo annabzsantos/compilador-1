@@ -1,6 +1,6 @@
 /**
  * @file struct_compiler.h
- * @author Prof. Ivairton M. Santos - UFMT - Computacao
+ * @author Anna Bheatryz Martins dos Santos e Mariana Sanchez Pedroni
  * @brief Modulo para definicao de constantes e estruturas de dados do Sistema
  *        Compilador de C Simplificado
  * @version 0.3
@@ -30,6 +30,7 @@
 #define CLOSE_PAR ')'
 #define SEMICOLON ';'
 #define DOUBLE_QUOTES '"'
+#define COMMA ','
 
 //KeyWords
 #define ID 256

@@ -1,6 +1,6 @@
 /**
  * @file gen.h
- * @author Ivairton M. Santos - UFMT - Computacao
+ * @author Anna Bheatryz Martins dos Santos e Mariana Sanchez Pedroni
  * @brief Modulo do gerador de codigo
  * @version 0.3
  * @date 2022-02-04
@@ -23,6 +23,8 @@ void genSub();
 void genMult();
 void genDiv();
 void gen_assign(char*);
+
+void gen_call(char*);
 
 void genNum(char num_string[MAX_TOKEN]);
 void gen_preambule(void);

@@ -1,6 +1,6 @@
 /**
  * @file lex.h
- * @author Prof. Ivairton M. Santos
+ * @author Anna Bheatryz Martins dos Santos e Mariana Sanchez Pedroni
  * @brief Modulo do analisador lexico
  * @version 0.4
  * @date 2022-03-16

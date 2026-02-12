@@ -1,6 +1,6 @@
 /**
  * @file lex.c
- * @author Prof. Ivairton M. Santos - UFMT - Computacao
+ * @author Anna Bheatryz Martins dos Santos e Mariana Sanchez Pedroni
  * @brief Codificacao do modulo do analisador lexico
  * @version 0.4
  * @date 2022-03-16

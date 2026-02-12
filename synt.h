@@ -1,6 +1,6 @@
 /**
  * @file synt.h
- * @author Prof. Ivairton M. Santos - UFMT - Computacao
+ * @author Anna Bheatryz Martins dos Santos e Mariana Sanchez Pedroni
  * @brief Modulo do analisado sintatico
  * @version 0.5
  * @date 2022-03-17
@@ -44,6 +44,10 @@ void declarations(void);
 void statements (void);
 int declaration(void);
 int statement(void);
+
+void func_code(void);
+int func_implementation(void);
+int func_call(void);
 
 int B(void);
 int boolOperator(int*);
