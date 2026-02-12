@@ -148,7 +148,6 @@ type_symbol_function *sym_func_declare(char *name, char type, type_symbol params
     }
     return &symfuncs[symfuncspos -1];
 }
-*/
 
 /**
  * @brief Inicializa tabela de simbolos de variaveis globais
