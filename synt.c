@@ -37,15 +37,15 @@ int match(int token_tag) {
  * @brief Regra de derivacao inicial
  */
 void program (void) {
-    gen_preambule(); //Temporariamente cria um preambulo adicional que permite o uso das funcoes scanf e printf
-    declarations();
-    match(BEGIN);
-    gen_preambule_code(); //Chamada do gerador de codigo para escrita do cabecalho da secao de codigo
-    statements();
-    match(END);
-    gen_epilog_code();
-    func_code();
-    gen_data_section(); //Chamada do gerador de codigo para declaracao de variaveis
+    gen_preambule(); 
+    declarations(); 
+    match(BEGIN);   
+    gen_preambule_code(); 
+    statements();   
+    match(END);     
+    gen_epilog_code(); 
+    func_code(); // Processa implementacao de funcoes
+    gen_data_section();
 }
 
 /**
@@ -82,7 +82,7 @@ int declaration(void) {
                 return false;
             }
             match(OPEN_PAR);
-            type_symbol_table_entry params[MAX_PARAMS];
+            type_param params[MAX_PARAMS];
             int nparams = 0;
             bool has_param = (lookahead->tag != CLOSE_PAR);
             while (has_param) {
@@ -104,7 +104,6 @@ int declaration(void) {
                 // Adiciona ao array de params
                 params[nparams].type = param_type;
                 strcpy(params[nparams].name, param_name);
-                params[nparams].addr = 0;
                 nparams++;
                 if (lookahead->tag == COMMA) {
                     match(COMMA);
@@ -161,15 +160,18 @@ int statement (void) {
         }
     } else if (lookahead->tag == WRITE) {
         match(WRITE);
-        if ( lookahead->tag == STRING ) {
+
+        if (lookahead->tag == STRING) {
             strcpy(string_value, lookahead->lexema);
             gen_string = sym_string_declare(string_value);
             match(STRING);
-            if ( gen_string != NULL ) {
+
+            if (gen_string != NULL) {
                 strcpy(lexeme_of_id, gen_string->name);
                 gen_write(lexeme_of_id, STRING);
-                match(SEMICOLON);
             }
+
+            match(SEMICOLON);
             return true;
         } else if ( lookahead->tag == ID) {
             strcpy(lexeme_of_id, lookahead->lexema);
@@ -235,9 +237,14 @@ int statement (void) {
     } else if (lookahead->tag == ID) {
         char lexeme_of_id[MAX_CHAR];
         strcpy(lexeme_of_id, lookahead->lexema);
+        
+        // Busca o ID em ambas as tabelas para resolver ambiguidade
         type_symbol_table_entry *search_symbol = sym_find(lexeme_of_id, &global_symbol_table_variables);
         type_symbol_function *func = sym_func_find(lexeme_of_id);
+        
         match(ID);
+        
+        // CASO 1: Atribuição (id = E;)
         if (lookahead->tag == ASSIGN) {
             if (search_symbol == NULL) {
                 printf("[ERRO] Variavel nao declarada: %s\n", lexeme_of_id);
@@ -245,40 +252,50 @@ int statement (void) {
             }
             match(ASSIGN);
             if (!E()) return false;
-            gen_assign(lexeme_of_id);
+            gen_assign(lexeme_of_id); // Gera: pop rax; mov [id], eax
             return match(SEMICOLON);
-        } else if (lookahead->tag == OPEN_PAR) {
+        } 
+        
+        // CASO 2: Chamada de Função (id ( args );) - Requisito 2
+        else if (lookahead->tag == OPEN_PAR) {
             if (func == NULL) {
-                printf("[ERRO] Funcao nao declarada: %s\n", lexeme_of_id);
+                printf("[ERRO] Funcao nao declarada ou prototipada: %s\n", lexeme_of_id);
                 return false;
             }
             match(OPEN_PAR);
+            
             int nargs = 0;
-            bool has_arg = (lookahead->tag != CLOSE_PAR);
-            while (has_arg) {
-                if (!E()) return false;
-                nargs++;
-                if (lookahead->tag == COMMA) {
-                    match(COMMA);
-                } else {
-                    has_arg = false;
-                }
+            if (lookahead->tag != CLOSE_PAR) {
+                do {
+                    if (!E()) return false; // E() empilha o resultado na pilha do assembly
+                    nargs++;
+                    if (lookahead->tag == COMMA) match(COMMA);
+                    else break;
+                } while (true);
             }
             match(CLOSE_PAR);
+
+            // Validação de quantidade (Requisito 2)
             if (nargs != func->nparams) {
-                printf("[ERRO] Numero de argumentos nao corresponde para funcao %s (esperado %d, recebido %d)\n", lexeme_of_id, func->nparams, nargs);
+                printf("[ERRO] Numero de argumentos incorreto para '%s'. Esperado: %d, Recebido: %d\n", 
+                        lexeme_of_id, func->nparams, nargs);
                 return false;
             }
-            // Gera código para atribuir argumentos aos parametros (em ordem reversa, pois pilha)
+
+            // Geração de código: Atribui os valores da pilha às variáveis globais dos parâmetros
+            // A ordem de desempilhamento deve ser a inversa da ordem de empilhamento (E())
             for (int i = func->nparams - 1; i >= 0; i--) {
+                fprintf(output_file, "; Passagem de parametro: %s\n", func->params[i].name);
                 fprintf(output_file, "pop rax\n");
                 fprintf(output_file, "mov [%s], eax\n", func->params[i].name);
             }
-            // Chamada da função
-            gen_call(func->label);
+
+            // Chamada efetiva (Requisito 3 pede jal/jr, aqui usando call para x86)
+            gen_call(func->label); 
             return match(SEMICOLON);
-        } else {
-            printf("[ERRO] Esperado '=' ou '(' apos ID: %s\n", lexeme_of_id);
+        } 
+        else {
+            printf("[ERRO] Esperado '=' ou '(' apos o identificador '%s'\n", lexeme_of_id);
             return false;
         }
     } else if (lookahead->tag == ENDTOKEN) {
@@ -315,7 +332,7 @@ int func_implementation(void){
         return false;
     }
     match(OPEN_PAR);
-    type_symbol_table_entry temp_params[MAX_PARAMS];
+    type_param temp_params[MAX_PARAMS];
     int temp_nparams = 0;
     bool has_param = (lookahead->tag != CLOSE_PAR);
     while (has_param) {
@@ -411,6 +428,7 @@ int ER() {
         if (b1) 
             b2 = ER();
         return b1 && b2;
+
     } else if (lookahead->tag == '-') {
         int b1, b2;
         match('-');
@@ -418,20 +436,23 @@ int ER() {
         genSub();
         if (b1)
             b2 = ER();
-        return b1 && b2;      
-    } else if (lookahead -> tag == ')') {
+        return b1 && b2;
+
+    } 
+    // TOKENS DE FOLLOW (fim de expressão)
+    else if (lookahead->tag == ')'
+          || lookahead->tag == SEMICOLON
+          || lookahead->tag == COMMA
+          || lookahead->tag == ENDTOKEN
+          || lookahead->tag == GT
+          || lookahead->tag == LT
+          || lookahead->tag == GE
+          || lookahead->tag == LE
+          || lookahead->tag == EQUAL
+          || lookahead->tag == NE) {
         return true;
-    } else if (lookahead -> tag == ENDTOKEN) {
-        return true;
-    } else if (lookahead -> tag == GT || lookahead -> tag == LT ||
-               lookahead -> tag == GE || lookahead -> tag == LE ||
-               lookahead -> tag == EQUAL || lookahead -> tag == NE) {
-        return true;
-    } else if (lookahead -> tag == '*') {
-        return true;
-    } else if (lookahead -> tag == '/') {
-        return true;
-    } else {
+    } 
+    else {
         return false;
     }
 }
@@ -453,7 +474,8 @@ int TR() {
         if (b1)
             b2 = TR();
         return b1 && b2;
-    } else if (lookahead -> tag == '/') {
+
+    } else if (lookahead->tag == '/') {
         int b1, b2;
         match('/');
         b1 = F();
@@ -461,19 +483,24 @@ int TR() {
         if (b1)
             b2 = TR();
         return b1 && b2;
-    } else if (lookahead->tag == ')') {
+
+    } 
+    // TOKENS DE FOLLOW
+    else if (lookahead->tag == ')'
+          || lookahead->tag == SEMICOLON
+          || lookahead->tag == COMMA
+          || lookahead->tag == ENDTOKEN
+          || lookahead->tag == '+'
+          || lookahead->tag == '-'
+          || lookahead->tag == GT
+          || lookahead->tag == LT
+          || lookahead->tag == GE
+          || lookahead->tag == LE
+          || lookahead->tag == EQUAL
+          || lookahead->tag == NE) {
         return true;
-    } else if (lookahead->tag == ENDTOKEN){ //EOF
-        return true;
-    } else if (lookahead -> tag == GT || lookahead -> tag == LT ||
-               lookahead -> tag == GE || lookahead -> tag == LE ||
-               lookahead -> tag == EQUAL || lookahead -> tag == NE) {
-        return true;
-    } else if (lookahead->tag == '+') {
-        return true;
-    } else if (lookahead->tag == '-') {
-        return true;
-    } else {
+    } 
+    else {
         return false;
     }
 }

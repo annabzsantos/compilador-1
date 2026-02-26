@@ -71,6 +71,9 @@ pop rbx
 pop rax
 sub rax,rbx
 push rax
+;Atribuicao
+pop rax
+mov [valor], eax
 ;jump incondicional
 jmp label0
 label1:

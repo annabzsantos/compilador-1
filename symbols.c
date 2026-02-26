@@ -1,10 +1,3 @@
-/**
- * @file symbols.c
- * @author Anna Bheatryz Martins dos Santos e Mariana Sanchez Pedroni
- * @brief Modulo do gerador da tabela de simbolos
- * @version 0.1
- * @date 2022-02-04
- */
 #include "symbols.h"
 
 extern int nstringconsts;
@@ -49,12 +42,14 @@ type_symbol_table_entry *sym_find(char *s, type_symbol_table_variables *stv) {
 	if (stv->n_variables < MAX_SYMBOLS) { //Verifica se eh possivel declarar mais variavel
 		int n_var;
         n_var = stv->n_variables;
+
         stv->variable[n_var].type = type;
         stv->variable[n_var].addr = addr;
         strcpy(stv->variable[n_var].name, name);
+
         stv->n_variables++;
-        n_var = stv->n_variables;
-        return &(stv->variable[n_var]);
+
+        return &(stv->variable[n_var]);   // CORRIGIDO
 	} else {
         printf("[ERRO] Limite de declaracao (quantidade) de variaveis atingido.\n");
         return NULL;
@@ -90,13 +85,17 @@ type_symbol_table_string_entry *sym_string_declare(char *s) {
     if ( symbol_table_string.n_strings < MAX_SYMBOLS ) {
         int n_str;
         char str_name[MAX_TOKSZ];
+
         sprintf(str_name, "str%d", str_label_count);
+
         n_str = symbol_table_string.n_strings;
 
         strcpy(symbol_table_string.string[n_str].value, s);
         strcpy(symbol_table_string.string[n_str].name, str_name);
+
         str_label_count++;
         symbol_table_string.n_strings++;
+
         return &(symbol_table_string.string[n_str]) ;
     } else {
         printf("[ERRO] Numero maximo de strings declaradas alcancado!\n");
@@ -130,21 +129,31 @@ type_symbol_function *sym_func_find(char *s) {
  * @param nparams 
  * @return type_symbol_function* 
  */
-type_symbol_function *sym_func_declare(char *name, int return_type, type_symbol_table_entry *params, int nparams) {
+type_symbol_function *sym_func_declare(char *name, int return_type, type_param *params, int nparams) {
+
     if (symfuncspos >= MAX_FUNCS) {
         printf("[ERRO] Limite de funcoes atingido.\n");
         return NULL;
     }
-    strcpy(symfuncs[symfuncspos].name, name);
-    symfuncs[symfuncspos].return_type = return_type;
-    symfuncs[symfuncspos].nparams = nparams;
-    for (int i = 0; i < nparams; i++) {
-        symfuncs[symfuncspos].params[i] = params[i];
+
+    type_symbol_function *f = &symfuncs[symfuncspos];
+
+    strcpy(f->name, name);
+    f->return_type = return_type;
+    f->nparams = nparams;
+
+    int i;
+    for (i = 0; i < nparams; i++) {
+        strcpy(f->params[i].name, params[i].name);
+        f->params[i].type = params[i].type;
     }
+
     // Gera label
-    sprintf(symfuncs[symfuncspos].label, "func_%s", name);
+    sprintf(f->label, "func_%s", name);
+
     symfuncspos++;
-    return &symfuncs[symfuncspos - 1];
+
+    return f;
 }
 
 void initSymbolTableFunctions() {

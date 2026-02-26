@@ -52,15 +52,23 @@ struct st_symbol_table_strings {
 };
 typedef struct st_symbol_table_strings type_symbol_table_string;
 
+// Parametro de funcao
+struct st_param {
+    char name[MAX_TOKSZ];
+    int type;
+};
+typedef struct st_param type_param;
+
 // Estrutura da tabela de simbolos para funcoes
 struct st_sym_func {
     char name[MAX_TOKSZ];
     int return_type;
-    type_symbol_table_entry params[MAX_PARAMS];
+    type_param params[MAX_PARAMS];
     int nparams;
     char label[MAX_TOKSZ];
 };
 typedef struct st_sym_func type_symbol_function;
+
 
 // Variaveis globais para TSF
 extern type_symbol_function symfuncs[MAX_FUNCS];
@@ -72,7 +80,9 @@ type_symbol_table_entry *sym_declare(char *name, int type, int addr, type_symbol
 type_symbol_table_string_entry *sym_string_find(char *s);
 type_symbol_table_string_entry *sym_string_declare(char *s);
 type_symbol_function *sym_func_find(char *s);
-type_symbol_function *sym_func_declare(char *name, int return_type, type_symbol_table_entry *params, int nparams);
+type_symbol_function *sym_func_declare(char *name, int return_type, type_param *params, int nparams);
+void initSymbolTableFuncions();
+void printSTFunctions();
 void initSymbolTableVariables(type_symbol_table_variables *stv);
 void initSymbolTableString();
 void initSymbolTableFunctions();
