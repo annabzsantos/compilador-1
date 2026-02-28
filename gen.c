@@ -107,6 +107,7 @@ void gen_data_section(void) {
     int i, n;
     
     fprintf(output_file, "\n\tsection .data\n");
+    fprintf(output_file, "buffer_io db 0, 0\n"); // Buffer para leitura de input do usuario
 
     // emite strings de formato fixo
     //fprintf(output_file, "str0: db \"%%d\",13,10,0\n");
@@ -131,7 +132,7 @@ void gen_data_section(void) {
        
        switch(global_symbol_table_variables.variable[i].type) { //Por enquanto gera endereco zero
             case INT:
-                fprintf(output_file, "dd \"%%d\", 4\n");
+                fprintf(output_file, "dd 0\n");
                 break;
             case STRING:
                 fprintf(output_file, "db \"                \" \n");
@@ -267,13 +268,11 @@ void gen_bool(int oper) {
 }
 
 void gen_bool_label_name(char *name) {
-    char str_name[MAX_CHAR];
-    char conv_value[16];
     static int nbool_labels = 0;
+    char conv_value[16];
     sprintf(conv_value, "%d", nbool_labels);
-    strcpy(str_name, name);
-    strcat(str_name, conv_value);
-    strcpy(name, "bool_name");
+    strcpy(name, "bool_label");
+    strcat(name, conv_value);
     nbool_labels++;
 }
 
@@ -292,12 +291,18 @@ void gen_read(char *lexeme_of_id, int type) {
     */
     switch (type) {
         case INT:
-            fprintf(output_file, "\n;le valor inteiro\n");
-            fprintf(output_file, "mov edx,4\n");
-            fprintf(output_file, "mov ecx,%s\n", lexeme_of_id);
-            fprintf(output_file, "mov ebx,1\n");
-            fprintf(output_file, "mov eax,3\n");
+            fprintf(output_file, "\n; --- le valor inteiro ---\n");
+            // 1. Lê do teclado para o buffer
+            fprintf(output_file, "mov edx, 2\n"); // Lê 1 dígito + a tecla ENTER
+            fprintf(output_file, "mov ecx, buffer_io\n"); // Guarda no rascunho
+            fprintf(output_file, "mov ebx, 0\n"); // 0 = Teclado
+            fprintf(output_file, "mov eax, 3\n"); // sys_read
             fprintf(output_file, "int 0x80\n");
+
+            // 2. Converte ASCII para Número Real
+            fprintf(output_file, "movzx eax, byte [buffer_io]\n"); // Pega o caractere digitado
+            fprintf(output_file, "sub eax, 48\n"); // Transforma '5' (53) em 5
+            fprintf(output_file, "mov dword [%s], eax\n", lexeme_of_id); // Salva na variável real
             break;
         case FLOAT:
             fprintf(output_file, "\n;le valor float\n");
@@ -341,11 +346,17 @@ void gen_write(char *lexeme_of_id, int type) {
     */
     switch (type) {
         case INT:
-            fprintf(output_file, "\n;escreve valor inteiro\n");
-            fprintf(output_file, "mov edx,4\n");
-            fprintf(output_file, "mov ecx,%s\n", lexeme_of_id);
-            fprintf(output_file, "mov ebx,1\n");
-            fprintf(output_file, "mov eax,4\n");
+            fprintf(output_file, "\n; --- escreve valor inteiro ---\n");
+            // 1. Converte Número Real para ASCII
+            fprintf(output_file, "mov eax, dword [%s]\n", lexeme_of_id); // Pega o número matemático
+            fprintf(output_file, "add eax, 48\n"); // Transforma 5 em '5' (53)
+            fprintf(output_file, "mov byte [buffer_io], al\n"); // Salva o texto no rascunho
+
+            // 2. Imprime na tela
+            fprintf(output_file, "mov edx, 1\n"); // Imprime apenas 1 caractere
+            fprintf(output_file, "mov ecx, buffer_io\n"); // Imprime o que está no rascunho
+            fprintf(output_file, "mov ebx, 1\n"); // 1 = Tela
+            fprintf(output_file, "mov eax, 4\n"); // sys_write
             fprintf(output_file, "int 0x80\n");
             break;
         case FLOAT:
@@ -377,5 +388,24 @@ void gen_write(char *lexeme_of_id, int type) {
 
 void gen_call(char *label){
     fprintf(output_file, ";Chamada de funcao\n");
-    fprintf(output_file, "call %s\n", label);
+    fprintf(output_file, "jal %s\n", label);
+}
+
+/**
+ * @brief Funcao que gera codigo de retorno de funcao (ret)
+ * 
+ */
+
+void gen_func_epilog(void) {
+    fprintf(output_file, "\n;Retorna da funcao\n");
+    fprintf(output_file, "jr $ra\n");
+}
+
+/**
+ * @brief Regra de derivação para implementação de funções
+ */
+void gen_id_value(char *id_name) {
+    fprintf(output_file, ";Carrega valor de variavel\n");
+    fprintf(output_file, "mov eax, dword [%s]\n", id_name);
+    fprintf(output_file, "push rax\n");
 }

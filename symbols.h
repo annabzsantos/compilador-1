@@ -15,7 +15,7 @@
 #include "struct_compiler.h"
 
 #define MAX_SYMBOLS 4096
-#define MAX_CHAR 32
+#define MAX_CHAR 256
 #define MAX_PARAMS 8
 #define MAX_FUNCS 64
 #define MAX_STRINGSZ 512

@@ -19,33 +19,15 @@ mov ebx,1
 mov eax,4
 int 0x80
 
-;le valor inteiro
-mov edx,4
-mov ecx,valor
-mov ebx,1
-mov eax,3
+; --- le valor inteiro ---
+mov edx, 2
+mov ecx, buffer_io
+mov ebx, 0
+mov eax, 3
 int 0x80
-label0:
-;Amarzenamento de numero
-mov rax,valor
-push rax
-;Amarzenamento de numero
-mov rax,0
-push rax
-;Aplica operador booleano/exp.logica
-pop rbx
-pop rax
-mov rcx,1
-cmp eax,ebx
-jg bool_name
-mov rcx,0
-bool_name:
-mov rax, rcx
-push rax
-;jump condicional
-pop rax
-cmp rax, 0
-jz label1
+movzx eax, byte [buffer_io]
+sub eax, 48
+mov dword [x], eax
 
 ;escreve valor string
 mov edx,16
@@ -54,36 +36,78 @@ mov ebx,1
 mov eax,4
 int 0x80
 
-;escreve valor inteiro
-mov edx,4
-mov ecx,valor
+; --- le valor inteiro ---
+mov edx, 2
+mov ecx, buffer_io
+mov ebx, 0
+mov eax, 3
+int 0x80
+movzx eax, byte [buffer_io]
+sub eax, 48
+mov dword [y], eax
+
+;escreve valor string
+mov edx,16
+mov ecx,str2
 mov ebx,1
 mov eax,4
 int 0x80
-;Amarzenamento de numero
-mov rax,valor
-push rax
-;Amarzenamento de numero
-mov rax,1
-push rax
-;Subtracao
-pop rbx
-pop rax
-sub rax,rbx
-push rax
-;Atribuicao
-pop rax
-mov [valor], eax
-;jump incondicional
-jmp label0
-label1:
+;Chamada de funcao
+jal func_calcula
+
+;escreve valor string
+mov edx,16
+mov ecx,str3
+mov ebx,1
+mov eax,4
+int 0x80
 
 ;encerra programa
 mov ebx,0
 mov eax,1
 int 0x80
+func_calcula:
+;Carrega valor de variavel
+mov eax, dword [x]
+push rax
+;Carrega valor de variavel
+mov eax, dword [y]
+push rax
+;Adicao
+pop rax
+pop rbx
+add rax,rbx
+push rax
+;Atribuicao
+pop rax
+mov [x], eax
+
+;escreve valor string
+mov edx,16
+mov ecx,str4
+mov ebx,1
+mov eax,4
+int 0x80
+
+; --- escreve valor inteiro ---
+mov eax, dword [x]
+add eax, 48
+mov byte [buffer_io], al
+mov edx, 1
+mov ecx, buffer_io
+mov ebx, 1
+mov eax, 4
+int 0x80
+
+;Retorna da funcao
+jr $ra
 
 	section .data
-valor: dd "%d", 4
-str0: db "Informe um valor"
-str1: db "\nvalor"
+buffer_io db 0, 0
+x: dd 0
+y: dd 0
+str0: db "Informe o valor de X:"
+str1: db "\nInforme o valor de Y:"
+str2: db "\nChamando a funcao...\n"
+str3: db "\nDe volta ao programa principal!"
+str4: db "Resultado de X + Y dentro da funcao: "

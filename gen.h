@@ -39,5 +39,7 @@ void gen_cond_jump(char*);
 void gen_incond_jump(char*);
 void gen_bool(int);
 void gen_bool_label_name(char*);
+void gen_func_epilog(void); // Funcao que gera codigo de retorno de funcao (ret)
+void gen_id_value(char*);
 
 #endif //_GEN_H_

@@ -1,13 +1,25 @@
-int valor;
+int x;
+int y;
+
+int calcula(int x, int y);
 
 begin
-    write "Informe um valor:";
-    read valor;
+    write "Informe o valor de X:";
+    read x;
 
-    while (valor > 0)
-    begin
-        write "\nvalor:";
-        write valor;
-        valor = valor - 1;
-    end
+    write "\nInforme o valor de Y:";
+    read y;
+
+    write "\nChamando a funcao...\n";
+    
+    calcula(x, y);
+
+    write "\nDe volta ao programa principal!";
+end
+
+int calcula(int x, int y)
+begin
+    x = x + y;
+    write "Resultado de X + Y dentro da funcao: ";
+    write x;
 end

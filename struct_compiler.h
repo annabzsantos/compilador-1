@@ -12,7 +12,7 @@
 #define _STRUCT_COMPILER_
 
 // Definicao de constantes para todo o compilador
-#define MAX_CHAR 32
+#define MAX_CHAR 256
 #define MAX_TOKEN 32
 
 #define true 1  //por conveniencia, para facilitar leitura de codigo

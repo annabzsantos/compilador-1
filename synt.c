@@ -38,17 +38,16 @@ int match(int token_tag) {
  */
 void program (void) {
     gen_preambule(); 
-    gen_data_section();
     gen_preambule_code(); 
-
     declarations(); 
     
     match(BEGIN);   
     statements();   
     match(END);     
     
-    gen_epilog_code(); 
-    func_code(); // Processa implementacao de funcoes
+    gen_epilog_code();  // Encerra o programa
+    func_code(); // Gera o codigo das funcoes
+    gen_data_section(); // Gera a secao de dados (variaveis globais e strings)
     printSTFunctions();
 
 }
@@ -101,9 +100,11 @@ int declaration(void) {
                 strcpy(param_name, lookahead->lexema);
                 match(ID);
                 // Declara parametro como variável global
-                if (sym_find(param_name, &global_symbol_table_variables) != NULL) {
-                    printf("[ERRO] Parametro '%s' ja declarado.\n", param_name);
-                    return false;
+                type_symbol_table_entry *existing_var = sym_find(param_name, &global_symbol_table_variables);
+                
+                if (existing_var != NULL) {
+                    // Se não existe, cadastra na tabela global
+                    sym_declare(param_name, param_type, 0, &global_symbol_table_variables);
                 }
                 sym_declare(param_name, param_type, 0, &global_symbol_table_variables);
                 // Adiciona ao array de params
@@ -257,11 +258,10 @@ int statement (void) {
             }
             match(ASSIGN);
             if (!E()) return false;
-            gen_assign(lexeme_of_id); // Gera: pop rax; mov [id], eax
+            gen_assign(lexeme_of_id); 
             return match(SEMICOLON);
         } 
         
-        // CASO 2: Chamada de Função (id ( args );) - Requisito 2
         else if (lookahead->tag == OPEN_PAR) {
             if (func == NULL) {
                 printf("[ERRO] Funcao nao declarada ou prototipada: %s\n", lexeme_of_id);
@@ -272,7 +272,38 @@ int statement (void) {
             int nargs = 0;
             if (lookahead->tag != CLOSE_PAR) {
                 do {
-                    if (!E()) return false; // E() empilha o resultado na pilha do assembly
+
+                    if (lookahead->tag == ID) {
+                        char param_name[MAX_CHAR];
+                        strcpy(param_name, lookahead->lexema);
+                        
+                        type_symbol_table_entry *var_param = sym_find(param_name, &global_symbol_table_variables);
+                        
+                        if (var_param == NULL) {
+                            printf("[ERRO] Variavel parametro nao declarada: %s\n", param_name);
+                            return false;
+                        }
+
+                        if (nargs < func->nparams) {
+                            // Verifica o Tipo
+                            if (var_param->type != func->params[nargs].type) {
+                                printf("[ERRO] Tipo incompativel no parametro %d de '%s'.\n", nargs+1, func->name);
+                                return false;
+                            }
+                            // Verifica o ID (Nome)
+                            if (strcmp(var_param->name, func->params[nargs].name) != 0) {
+                                printf("[ERRO] Nome do parametro %d incompativel. Esperado '%s', recebido '%s'.\n", 
+                                        nargs+1, func->params[nargs].name, var_param->name);
+                                return false;
+                            }
+                        }
+                        
+                        match(ID);
+                    } else {
+                        printf("[ERRO] Esperado variavel como parametro da funcao.\n");
+                        return false;
+                    }
+
                     nargs++;
                     if (lookahead->tag == COMMA) match(COMMA);
                     else break;
@@ -280,25 +311,15 @@ int statement (void) {
             }
             match(CLOSE_PAR);
 
-            // Validação de quantidade (Requisito 2)
             if (nargs != func->nparams) {
                 printf("[ERRO] Numero de argumentos incorreto para '%s'. Esperado: %d, Recebido: %d\n", 
                         lexeme_of_id, func->nparams, nargs);
                 return false;
             }
 
-            // Geração de código: Atribui os valores da pilha às variáveis globais dos parâmetros
-            // A ordem de desempilhamento deve ser a inversa da ordem de empilhamento (E())
-            for (int i = func->nparams - 1; i >= 0; i--) {
-                fprintf(output_file, "; Passagem de parametro: %s\n", func->params[i].name);
-                fprintf(output_file, "pop rax\n");
-                fprintf(output_file, "mov [%s], eax\n", func->params[i].name);
-            }
-
-            // Chamada efetiva (Requisito 3 pede jal/jr, aqui usando call para x86)
             gen_call(func->label); 
             return match(SEMICOLON);
-        } 
+        }
         else {
             printf("[ERRO] Esperado '=' ou '(' apos o identificador '%s'\n", lexeme_of_id);
             return false;
@@ -371,7 +392,7 @@ int func_implementation(void){
     gen_label(func->label); // Label da funcao
     statements();
     match(END);
-    gen_epilog_code(); // ret
+    gen_func_epilog(); // ret
     return true;  
 }
 
@@ -534,7 +555,7 @@ int F() {
             return false;
         }
         b1 = match(ID);
-        genNum(lexema);
+        gen_id_value(lexema);
         return b1;
     } else {
         return false;

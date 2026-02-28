@@ -39,6 +39,11 @@ type_symbol_table_entry *sym_find(char *s, type_symbol_table_variables *stv) {
  * @return type_symbol* 
  */
  type_symbol_table_entry *sym_declare(char *name, int type, int addr, type_symbol_table_variables *stv) {
+    type_symbol_table_entry *existing = sym_find(name, stv);
+    if (existing != NULL) {
+        return existing;
+    }
+
 	if (stv->n_variables < MAX_SYMBOLS) { //Verifica se eh possivel declarar mais variavel
 		int n_var;
         n_var = stv->n_variables;

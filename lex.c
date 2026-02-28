@@ -156,6 +156,12 @@ type_token *getToken() {
         strcpy(token->lexema, ";");
         token->value = 0;
     }
+    //Verifica se COMMA -> ","
+    else if (ch == COMMA) {
+        token->tag = COMMA;
+        strcpy(token->lexema, ",");
+        token->value = 0;
+    }
     //Verifica se EQUAL ou ASSIGN -> '==' ou '=' 
     else if (ch == ASSIGN) {
         //Primeiro trata o caso de '=='. O caso '=' é feito por exclusão.
@@ -203,18 +209,24 @@ type_token *getToken() {
         }
     }
 
-    //Verifica aspas duplas
+    // Verifica aspas duplas
     else if (ch == DOUBLE_QUOTES) {
-        buffer[pos_buffer++] = ch;
+        buffer[pos_buffer++] = ch; // Guarda a aspa inicial
         ch = fgetc(input_file);
-        //Consome toda a string, ateh encotrar o " seguinte
-        while ( (ch != DOUBLE_QUOTES) && (pos_buffer-1 < MAX_CHAR) ) {
+        
+        // Consome ate encontrar o fechamento ou estourar o limite da memoria
+        while ( (ch != DOUBLE_QUOTES) && (ch != EOF) && (pos_buffer < MAX_CHAR - 2) ) {
             buffer[pos_buffer++] = ch;
             ch = fgetc(input_file);
         }
-        //Fecha a string
-        buffer[pos_buffer-1] = DOUBLE_QUOTES;
-        buffer[pos_buffer] = ENDTOKEN; //insere \0 no final da string
+        
+        // Guarda a aspa final
+        if (ch == DOUBLE_QUOTES) {
+            buffer[pos_buffer++] = ch; 
+        }
+        
+        buffer[pos_buffer] = '\0'; // Fecha a string no padrao C
+        
         token->tag = STRING;
         strcpy(token->lexema, buffer);
         token->value = 0;
