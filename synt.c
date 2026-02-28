@@ -38,14 +38,19 @@ int match(int token_tag) {
  */
 void program (void) {
     gen_preambule(); 
-    declarations(); 
-    match(BEGIN);   
+    gen_data_section();
     gen_preambule_code(); 
+
+    declarations(); 
+    
+    match(BEGIN);   
     statements();   
     match(END);     
+    
     gen_epilog_code(); 
     func_code(); // Processa implementacao de funcoes
-    gen_data_section();
+    printSTFunctions();
+
 }
 
 /**
